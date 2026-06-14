@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: stock-mini-app
+    runtime: python
+    buildCommand: ""
+    startCommand: python backend.py
+    envVars:
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: PORT
+        value: "8000"

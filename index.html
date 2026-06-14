@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>StockMini</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div class="header-top">
+                <h1>StockMini</h1>
+                <span class="badge">Live</span>
+            </div>
+            <p class="subtitle">Real-time stock news & research</p>
+        </header>
+
+        <div id="market-overview" class="card">
+            <div class="card-header">
+                <h2>Market Overview</h2>
+                <button id="refresh-btn" class="icon-btn" onclick="refreshMarket()">🔄</button>
+            </div>
+            <div id="market-data" class="market-grid">
+                <div class="market-item"><span class="label">S&P 500</span><span class="value" id="sp500">-</span></div>
+                <div class="market-item"><span class="label">NASDAQ</span><span class="value" id="nasdaq">-</span></div>
+                <div class="market-item"><span class="label">DJIA</span><span class="value" id="djia">-</span></div>
+            </div>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="stock-input" placeholder="Search stock symbol or news..." onkeydown="if(event.key==='Enter') searchStock()">
+            <button onclick="searchStock()">Search</button>
+        </div>
+
+        <div id="quick-actions" class="card">
+            <div class="card-header"><h2>Quick Actions</h2></div>
+            <div class="action-grid">
+                <button class="action-btn" onclick="quickSearch('AAPL')">AAPL</button>
+                <button class="action-btn" onclick="quickSearch('TSLA')">TSLA</button>
+                <button class="action-btn" onclick="quickSearch('NVDA')">NVDA</button>
+                <button class="action-btn" onclick="quickSearch('SPCX')">SPCX</button>
+                <button class="action-btn" onclick="quickSearch('bitcoin')">Bitcoin</button>
+                <button class="action-btn" onclick="loadLatestNews()">📰 News</button>
+            </div>
+        </div>
+
+        <div id="news-section" class="card">
+            <div class="card-header">
+                <h2>Latest News</h2>
+                <span id="news-count" class="count-badge"></span>
+            </div>
+            <div id="news-list" class="news-list">
+                <div class="loading">Loading news...</div>
+            </div>
+        </div>
+
+        <div id="result-section" class="card" style="display:none">
+            <div class="card-header">
+                <h2 id="result-title">Results</h2>
+                <button class="icon-btn" onclick="closeResult()">✕</button>
+            </div>
+            <div id="result-content"></div>
+        </div>
+
+        <footer>
+            <p>Powered by Firecrawl API</p>
+        </footer>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

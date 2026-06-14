@@ -1,0 +1,11 @@
+﻿Write-Host "StockMini Deploy Script"
+Write-Host "========================"
+Write-Host ""
+Write-Host "1. Deploy to Render:"
+Write-Host "   git push to GitHub, connect on dashboard.render.com"
+Write-Host "   Set env FIRECRAWL_API_KEY"
+Write-Host ""
+Write-Host "2. Run locally:"
+Write-Host "   pip install -r requirements.txt"
+Write-Host '   $env:FIRECRAWL_API_KEY = "fc-5aac048424bc4a82809de7c22cdb3eb7"'
+Write-Host "   python backend.py"
