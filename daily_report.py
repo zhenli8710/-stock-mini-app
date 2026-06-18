@@ -22,7 +22,8 @@ def build():
     queries = [
         "美股 美联储 利率 重大 财经 新闻 突发",
         "A股 收盘 涨跌 政策 利好 利空 最新 消息",
-        "港股 恒生 中概 比特币 黄金",
+        "港股 恒生 中概 黄金 比特币 原油",
+        "人民币 汇率 美元 离岸 升值 贬值 最新",
     ]
 
     all_items = []
@@ -37,7 +38,7 @@ def build():
                     seen.add(u)
                     all_items.append((t, u, desc))
 
-    for i, (t, u, desc) in enumerate(all_items[:6], 1):
+    for i, (t, u, desc) in enumerate(all_items[:8], 1):
         lines.append(f"{i}. [{t}]({u})")
         if desc:
             lines.append(f"   {desc}")
