@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI行业动态 - 最新AI新闻与趋势 - AI工具导航</title>
+<meta name="description" content="AI行业最新动态，每天更新的人工智能新闻、技术突破、产品发布和行业趋势。">
+<link rel="stylesheet" href="css/style.css">
+<style>.news-page .article{padding:24px 32px}.news-item{border-bottom:1px solid var(--border);padding:16px 0}.news-item:last-child{border:none}.news-item .source{font-size:12px;color:var(--text2);margin-bottom:4px}.news-item h3{font-size:16px;font-weight:600;margin-bottom:6px}.news-item h3 a{color:var(--text)}.news-item h3 a:hover{color:var(--accent)}.news-item p{font-size:13px;color:var(--text2);line-height:1.6}.loading{text-align:center;padding:60px 0}.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.error-msg{text-align:center;padding:40px;color:var(--text2)}.refresh-bar{text-align:right;margin-bottom:16px}.refresh-bar button{background:var(--accent);color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer}.refresh-bar .updated{font-size:12px;color:var(--text2);margin-right:12px}
+</style>
+</head><body class="news-page">
+<header><div class="container">
+<a href="/" class="logo">AI<span>工具导航</span></a>
+<nav><a href="/">首页</a><a href="/category/writing.html">AI写作</a><a href="/category/image.html">AI图片</a><a href="/news.html" style="color:var(--accent);border-color:var(--accent)">行业动态</a></nav>
+<button class="menu-toggle">☰</button></div></header>
+<div class="container"><div class="breadcrumb"><a href="/">首页</a><span>›</span><span>AI行业动态</span></div></div>
+<section style="padding-top:0"><div class="container"><div class="article">
+<h1>AI 行业动态</h1>
+<p style="color:var(--text2);margin-bottom:24px">最新AI新闻、产品发布、技术突破。每天更新。</p>
+<div class="refresh-bar"><span class="updated" id="update-time"></span><button onclick="loadNews()">刷新</button></div>
+<div id="news-container"><div class="loading"><div class="spinner"></div><p style="margin-top:16px">正在加载最新AI新闻...</p></div></div>
+</div></div></section>
+<footer><div class="container"><div class="footer-bottom"><p>© 2026 AI工具导航 | <a href="/">aichagpt.com</a></p></div></div></footer>
+<script>
+async function loadNews(){
+    const c=document.getElementById('news-container');
+    const t=document.getElementById('update-time');
+    c.innerHTML='<div class="loading"><div class="spinner"></div><p style="margin-top:16px">正在加载...</p></div>';
+    try{
+        const r=await fetch('https://stock-mini-app-production.up.railway.app/api/search',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({query:'AI 人工智能 最新 新闻 发布 2026',limit:12})
+        });
+        const d=await r.json();
+        const items=d.data?.web||d.web||[];
+        if(!items.length){c.innerHTML='<div class="loading">暂无新闻</div>';return}
+        t.textContent='更新于 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+        let html='';
+        const seen=new Set();
+        for(const n of items){
+            const title=n.title?.trim();
+            const url=n.url||'#';
+            const desc=(n.description||'')?.slice(0,200);
+            const domain=url!=='#'?new URL(url).hostname.replace('www.',''):'';
+            if(title&&!seen.has(title)&&!/youtube|google\.com|bing\.com/i.test(url)){
+                seen.add(title);
+                html+='<div class="news-item">';
+                if(domain)html+='<div class="source">'+domain+'</div>';
+                html+='<h3><a href="'+url+'" target="_blank" rel="noopener">'+title+'</a></h3>';
+                if(desc)html+='<p>'+desc+'</p>';
+                html+='</div>';
+            }
+        }
+        c.innerHTML=html||'<div class="loading">暂无新闻</div>';
+    }catch(e){
+        c.innerHTML='<div class="error-msg">加载失败，请稍后重试</div>';
+    }
+}
+loadNews();
+</script>
+</body></html>
