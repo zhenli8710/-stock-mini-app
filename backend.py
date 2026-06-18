@@ -2,9 +2,10 @@
 """StockMini Backend Server - proxy to Firecrawl API"""
 
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import httpx
 import uvicorn
@@ -65,6 +66,24 @@ async def scrape(req: ScrapeRequest):
 async def health():
     return {"status": "ok", "firecrawl_configured": bool(FIRECRAWL_API_KEY)}
 
+
+@app.api_route("/{path:path}", methods=["GET"])
+async def serve_pages(path: str, request: Request):
+    host = request.headers.get("host", "")
+    base = os.path.dirname(__file__)
+    if "aichagpt" in host or "aichatgpt" in host:
+        sp = os.path.join(base, "seo-site", path or "index.html")
+        if path == "" or path == "/":
+            sp = os.path.join(base, "seo-site", "index.html")
+        if os.path.isfile(sp):
+            return FileResponse(sp)
+        return FileResponse(os.path.join(base, "seo-site", "index.html"))
+    sp = os.path.join(base, path or "index.html")
+    if path == "" or path == "/" or not path:
+        return FileResponse(os.path.join(base, "stock-app.html"))
+    if os.path.isfile(sp):
+        return FileResponse(sp)
+    return FileResponse(os.path.join(base, "stock-app.html"))
 
 # Serve frontend
 static_dir = os.path.join(os.path.dirname(__file__), ".")
