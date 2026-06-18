@@ -127,3 +127,5 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:40px 0 2
 /* ===== SEO Helper ===== */
 .seo-text{font-size:14px;color:var(--text2);line-height:1.8;max-width:800px;margin:24px auto;text-align:center}
 .seo-text strong{color:var(--text)}
+
+.download-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px;margin:20px 0}.download-box h3{font-size:16px;font-weight:600;margin-bottom:8px;color:#166534}.download-box p{font-size:13px;color:#15803d;margin-bottom:12px;line-height:1.5}.dl-btn{display:inline-block;background:#16a34a;color:#fff!important;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;transition:background .2s}.dl-btn:hover{background:#15803d}
