@@ -1,76 +1,87 @@
-﻿import os, sys, datetime, urllib.request, json
+﻿import os, sys, datetime, urllib.request, json, re
 sys.stdout.reconfigure(encoding="utf-8")
+
 SC_KEY = os.environ.get("SERVERCHAN_KEY", "")
 BN = "https://stock-mini-app-production.up.railway.app"
 TODAY = datetime.date.today().strftime("%Y-%m-%d")
+UA = "Mozilla/5.0"
 
-def sc(q, li=5):
-    try:
-        r = urllib.request.Request(BN+"/api/search",data=json.dumps({"query":q,"limit":li}).encode(),headers={"Content-Type":"application/json"})
-        d = json.loads(urllib.request.urlopen(r,timeout=60).read())
-        return d.get("data",{}).get("web",[]) or []
-    except: return []
+# ── Direct data fetch (no Firecrawl) ──
+def tencent_quote(codes):
+    p = []
+    for c in codes:
+        if c.startswith(("6","9")): p.append(f"sh{c}")
+        elif c.startswith("8"): p.append(f"bj{c}")
+        else: p.append(f"sz{c}")
+    req = urllib.request.Request(f"https://qt.gtimg.cn/q={','.join(p)}", headers={"User-Agent": UA})
+    resp = urllib.request.urlopen(req, timeout=10).read().decode("gbk")
+    r = {}
+    for line in resp.strip().split(";"):
+        if '"' not in line: continue
+        v = line.split('"')[1].split("~")
+        if len(v) < 49: continue
+        c = v[2].strip()
+        r[c] = {"name": v[1], "price": float(v[3]) if v[3] else 0, "chg": float(v[32]) if v[32] else 0}
+    return r
 
-lines = [f"StockMini \u6bcf\u65e5\u62a5\u544a | {TODAY}", "", "="*30, ""]
+def eastmoney_news(ps=30):
+    url = f"https://np-weblist.eastmoney.com/comm/web/listCG?client=web&biz=web&type=0&page=1&pageSize={ps}&tag=all&ext=%7B%22pool%22%3A%22global%22%7D"
+    d = json.loads(urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":UA,"Referer":"https://finance.eastmoney.com/"})).read())
+    items = []
+    for a in d.get("data",{}).get("list",[]):
+        items.append({"time":a.get("showDate",""),"title":re.sub(r"<[^>]+>","",str(a.get("title","")))})
+    return items
 
-# 1
-lines.append("\n\u4e00\u3001\u5168\u7403\u8d22\u7ecf\u8981\u95fb")
-for n in sc("\u5168\u7403\u8d22\u7ecf\u8981\u95fb \u6700\u65b0 \u91cd\u8981 2026",5):
-    t=n.get("title","").strip(); u=n.get("url","")
-    if t: lines.append(f"- [{t}]({u})")
+def ths_hot():
+    url = f"http://zx.10jqka.com.cn/event/api/getharden/date/{datetime.date.today().strftime('%Y-%m-%d')}/orderby/date/orderway/desc/charset/GBK/"
+    d = json.loads(urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":UA}),timeout=10).read())
+    return d.get("data") or []
 
-# 2 A\u80a1\u590d\u76d8
-lines.append("\n\u4e8c\u3001A\u80a1\u590d\u76d8\u4e0e\u5f00\u76d8\u524d\u5fc5\u8bfb\n")
-lines.append("\u3010\u5927\u76d8\u6570\u636e\u3011")
-for q,nm in [("\u4e0a\u8bc1\u6307\u6570 \u4eca\u5f00 \u6700\u9ad8 \u6700\u4f4e \u6210\u4ea4\u989d \u4e0a\u6da8\u5bb6\u6570 \u884c\u60c5","\u4e0a\u8bc1\u6307\u6570"),("\u6df1\u8bc1\u6210\u6307 \u4eca\u5f00 \u6700\u9ad8 \u6700\u4f4e \u6210\u4ea4\u989d \u884c\u60c5","\u6df1\u8bc1\u6210\u6307"),("\u521b\u4e1a\u677f\u6307 \u4eca\u5f00 \u6700\u9ad8 \u6700\u4f4e \u884c\u60c5","\u521b\u4e1a\u677f\u6307")]:
-    lines.append(f"\u25b6 {nm}")
-    for n in sc(q,2):
-        desc=(n.get("description","") or "")[:200]
-        if "\u4eca\u5f00" in desc or "\u6700\u9ad8" in desc or "\u4e0a\u6da8" in desc:
-            lines.append(f"  {desc}")
+# ── Build report ──
+lines = [f"StockMini 每日报告 | {TODAY}", "", "="*30, ""]
 
-lines.append("\n\u3010\u9886\u6da8\u677f\u5757\u3011")
-for n in sc("\u5927\u76d8\u5206\u6790 \u4e1c\u65b9\u8d22\u5bcc A\u80a1 \u677f\u5757",2):
-    desc=(n.get("description","") or "")[:200]
-    if "\u6da8\u5e45" in desc or "\u677f\u5757" in desc:
-        lines.append(f"  {desc}")
+# 1. 全球财经要闻
+lines.append("\n一、全球财经要闻")
+news = eastmoney_news(10)
+for n in news[:5]:
+    lines.append(f"- {n.get('title','')}")
 
-lines.append("\n\u3010\u5f00\u76d8\u524d\u5fc5\u8bfb\u3011")
-for n in sc("\u5f00\u76d8\u524d\u5fc5\u8bfb A\u80a1 \u91cd\u8981 \u6d88\u606f 2026",5):
-    t=n.get("title","").strip(); u=n.get("url","")
-    desc=(n.get("description","") or "")[:80]
-    if t: lines.append(f"- [{t}]({u})")
-    if desc: lines.append(f"  {desc}")
+# 2. A股复盘
+lines.append("\n二、A股复盘与开盘前必读\n")
+idx = tencent_quote(["000001","399001","399006","000300"])
+for name, code in [("上证指数","000001"),("深证成指","399001"),("创业板指","399006"),("沪深300","000300")]:
+    if code in idx:
+        d = idx[code]
+        arrow = "📈" if d["chg"] >= 0 else "📉"
+        lines.append(f"{arrow} {name}: {d['price']} ({d['chg']:+.2f}%)")
 
-lines.append("\n\u3010\u91cd\u70b9\u5173\u6ce8\u3011")
-for n in sc("A\u80a1 \u4e2a\u80a1 \u63a8\u8350 \u5173\u6ce8 \u70ed\u70b9 2026",5):
-    t=n.get("title","").strip(); u=n.get("url","")
-    desc=(n.get("description","") or "")[:120]
-    if t: lines.append(f"- [{t}]({u})")
-    if desc: lines.append(f"  {desc}")
-lines.append("\n*\u4ec5\u4f9b\u53c2\u8003\uff0c\u4e0d\u6784\u6210\u6295\u8d44\u5efa\u8bae*")
+lines.append("\n【强势个股 TOP10】")
+hot = ths_hot()
+for s in hot[:10]:
+    n = s.get("name",""); c = s.get("code",""); z = s.get("zhangfu",0); d = s.get("ddejingliang",0)
+    reason = s.get("reason","")
+    lines.append(f"  {n}({c}): {z:+.2f}% DDX={d} {reason[:30]}")
 
-# 3
-lines.append("\n\u4e09\u3001\u5168\u7403\u91cd\u5927\u65b0\u95fb")
-for n in sc("\u5168\u7403\u91cd\u5927\u65b0\u95fb \u56fd\u9645 \u6700\u65b0 2026",5):
-    t=n.get("title","").strip(); u=n.get("url","")
-    if t: lines.append(f"- [{t}]({u})")
+# 3. 全球重大新闻
+lines.append("\n三、全球重大新闻")
+for n in news[:8]:
+    lines.append(f"- {n.get('title','')}")
 
-# 4
-lines.append("\n\u56db\u3001AI\u5de5\u5177\u5bfc\u822a")
-lines.append(f"- [\u70b9\u51fb\u8bbf\u95ee aichagpt.com](https://aichagpt.com)")
+# 4. 最新产品价格
+lines.append("\n四、最新产品价格")
+prices = tencent_quote(["000001","000300","sh600519","sh601857","sh600036"])
+for name, code in [("上证指数","000001"),("沪深300","000300"),("贵州茅台","sh600519"),("中国石油","sh601857"),("招商银行","sh600036")]:
+    if code in prices:
+        d = prices[code]
+        lines.append(f"- {name}: {d['price']} ({d['chg']:+.2f}%)")
 
-# 5
-lines.append("\n\u4e94\u3001\u6700\u65b0\u4ea7\u54c1\u4ef7\u683c")
-for nm,q in [("iPhone 16 Pro","iPhone 16 Pro \u4ef7\u683c \u6700\u65b0"),("MacBook Pro M4","MacBook Pro M4 \u4ef7\u683c \u6700\u65b0"),("\u534e\u4e3aMate 70","\u534e\u4e3aMate 70 \u4ef7\u683c \u6700\u65b0"),("\u534e\u4e3aPura 80","\u534e\u4e3aPura 80 \u4ef7\u683c \u6700\u65b0")]:
-    for n in sc(q,2):
-        t=n.get("title","").strip(); u=n.get("url","")
-        if t: lines.append(f"- **{nm}**: [{t}]({u})")
-
-lines.append(f"\n{'='*30}\n\u5408\u4f5cV\uff1aLiZChary\nFirecrawl | {TODAY}")
+lines.append(f"\n{'='*30}\na-stock-data | {TODAY}")
 msg = "\n".join(lines)
 print(msg)
+
+# Push to WeChat via ServerChan
 if SC_KEY:
-    d=json.dumps({"title":f"StockMini \u6bcf\u65e5\u62a5\u544a {TODAY}","desp":msg}).encode()
-    urllib.request.urlopen(urllib.request.Request(f"https://sctapi.ftqq.com/{SC_KEY}.send",data=d,headers={"Content-Type":"application/json"}),timeout=15)
-    print("Sent!")
+    data = json.dumps({"title": f"StockMini 每日报告 {TODAY}", "desp": msg}).encode()
+    req = urllib.request.Request(f"https://sctapi.ftqq.com/{SC_KEY}.send", data=data, headers={"Content-Type": "application/json"})
+    resp = json.loads(urllib.request.urlopen(req, timeout=15).read())
+    print("✅ Sent!" if resp.get("code") == 0 else f"❌ Failed: {resp}")

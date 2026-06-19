@@ -73,7 +73,62 @@ async def health():
     return {"status": "ok", "firecrawl_configured": bool(FIRECRAWL_API_KEY)}
 
 
-@app.api_route("/{path:path}", methods=["GET"])
+import re, urllib.request, json as _json
+
+# ── Stock data API (no Firecrawl needed) ──
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
+def _tq(codes):
+    p = []
+    for c in codes:
+        if c.startswith(("6","9")): p.append(f"sh{c}")
+        elif c.startswith("8"): p.append(f"bj{c}")
+        else: p.append(f"sz{c}")
+    req = urllib.request.Request(f"https://qt.gtimg.cn/q={','.join(p)}", headers={"User-Agent": UA})
+    resp = urllib.request.urlopen(req, timeout=10).read().decode("gbk")
+    r = {}
+    for line in resp.strip().split(";"):
+        if '"' not in line: continue
+        v = line.split('"')[1].split("~")
+        if len(v) < 49: continue
+        c = v[2].strip()
+        r[c] = {"name": v[1], "price": float(v[3]) if v[3] else 0, "chg": float(v[32]) if v[32] else 0,
+                 "high": float(v[33]) if v[33] else 0, "low": float(v[34]) if v[34] else 0,
+                 "amount_wan": float(v[37]) if v[37] else 0, "turnover": float(v[38]) if v[38] else 0,
+                 "mcap_yi": float(v[44]) if v[44] else 0, "fmcap_yi": float(v[45]) if v[45] else 0}
+    return r
+
+def _ths_hot():
+    url = f"http://zx.10jqka.com.cn/event/api/getharden/date/{__import__('datetime').date.today().strftime('%Y-%m-%d')}/orderby/date/orderway/desc/charset/GBK/"
+    d = _json.loads(urllib.request.urlopen(urllib.request.Request(url), timeout=10).read())
+    return d.get("data") or []
+
+def _em_news(ps=30):
+    url = f"https://np-weblist.eastmoney.com/comm/web/listCG?client=web&biz=web&type=0&page=1&pageSize={ps}&tag=all&ext=%7B%22pool%22%3A%22global%22%7D"
+    d = _json.loads(urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":UA,"Referer":"https://finance.eastmoney.com/"})).read())
+    items = []
+    for a in d.get("data",{}).get("list",[]):
+        items.append({"time":a.get("showDate",""),"title":re.sub(r"<[^>]+>","",str(a.get("title","")))})
+    return items
+
+@app.get("/api/stock/news")
+async def stock_news():
+    return {"items": _em_news(20)}
+
+@app.get("/api/stock/review")
+async def stock_review():
+    idx = _tq(["000001","399001","399006","000300"])
+    hot = _ths_hot()
+    return {"indexes": idx, "hot_stocks": hot[:15]}
+
+@app.get("/api/stock/prices")
+async def stock_prices():
+    q = _tq(["000001","000300","399001","399006","sh600519","sh601857"])
+    return q
+
+@app.get("/api/stock/hot")
+async def stock_hot():
+    return {"items": _ths_hot()[:20]}@app.api_route("/{path:path}", methods=["GET"])
 async def serve_pages(path: str, request: Request):
     host = request.headers.get("host", "")
     base = os.path.dirname(__file__)
@@ -99,3 +154,4 @@ if os.path.exists(static_dir):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("backend:app", host="0.0.0.0", port=port, reload=False)
+
