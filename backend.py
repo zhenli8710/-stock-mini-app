@@ -62,6 +62,12 @@ async def scrape(req: ScrapeRequest):
     return resp.json()
 
 
+@app.post("/api/fetch")
+async def fetch_url(req: ScrapeRequest):
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        resp = await client.get(req.url, headers={"User-Agent": "Mozilla/5.0"})
+        return {"html": resp.text, "status": resp.status_code}
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "firecrawl_configured": bool(FIRECRAWL_API_KEY)}
