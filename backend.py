@@ -128,7 +128,78 @@ async def stock_prices():
 
 @app.get("/api/stock/hot")
 async def stock_hot():
-    return {"items": _ths_hot()[:20]}@app.api_route("/{path:path}", methods=["GET"])
+    return {"items": _ths_hot()[:20]}
+import threading, json as _json
+from datetime import datetime, timedelta
+
+# ── WeChat auto-send at 8:00 AM daily ──
+SERVERCHAN_KEY = os.environ.get("SERVERCHAN_KEY", "SCT364214Tj8zj8ZrbAVCj3O8lgywlRKeb")
+
+def _wechat_push(title, content):
+    """通过 Server酱 推送微信消息"""
+    import urllib.request
+    data = _json.dumps({"title": title, "desp": content}).encode()
+    req = urllib.request.Request(f"https://sctapi.ftqq.com/{SERVERCHAN_KEY}.send",
+        data=data, headers={"Content-Type": "application/json"})
+    try:
+        resp = _json.loads(urllib.request.urlopen(req, timeout=15).read())
+        return resp.get("code") == 0
+    except: return False
+
+def _daily_report():
+    """生成每日复盘报告并推送微信"""
+    try:
+        idx = _tq(["000001","399001","399006","000300"])
+        hot = _ths_hot()
+        news = _em_news(8)
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        lines = [f"📊 StockMini 每日复盘 {today}", "", "━"*20]
+        
+        # 大盘指数
+        for name, code in [("上证指数","000001"),("深证成指","399001"),("创业板指","399006"),("沪深300","000300")]:
+            if code in idx:
+                d = idx[code]
+                a = "📈" if d["chg"] >= 0 else "📉"
+                lines.append(f"{a} {name}: {d['price']} ({d['chg']:+.2f}%)")
+        
+        # 强势个股
+        if hot:
+            lines.append("", "🔥 强势个股 TOP10:")
+            for s in hot[:10]:
+                n = s.get("name",""); c = s.get("code",""); z = s.get("zhangfu",0)
+                lines.append(f"  {n}({c}): {z:+.2f}%")
+        
+        # 财经要闻
+        if news:
+            lines.append("", "📰 财经要闻:")
+            for n in news[:5]:
+                lines.append(f"  · {n.get('title','')}")
+        
+        lines.append("", "━"*20, "推送: a-stock-data | Server酱")
+        msg = "\n".join(lines)
+        
+        ok = _wechat_push(f"StockMini 复盘 {today}", msg)
+        print(f"[WeChat] Report sent: {ok}")
+    except Exception as e:
+        print(f"[WeChat] Error: {e}")
+
+def _scheduler():
+    """每天8:00运行复盘报告"""
+    while True:
+        now = datetime.now()
+        target = now.replace(hour=8, minute=0, second=0, microsecond=0)
+        if now >= target:
+            target += timedelta(days=1)
+        wait = (target - now).total_seconds()
+        time.sleep(wait)
+        _daily_report()
+
+# Start scheduler
+t = threading.Thread(target=_scheduler, daemon=True)
+t.start()
+print("[OK] WeChat scheduler started (8:00 AM daily)")
+@app.api_route("/{path:path}", methods=["GET"])
 async def serve_pages(path: str, request: Request):
     host = request.headers.get("host", "")
     base = os.path.dirname(__file__)
@@ -154,4 +225,5 @@ if os.path.exists(static_dir):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("backend:app", host="0.0.0.0", port=port, reload=False)
+
 
