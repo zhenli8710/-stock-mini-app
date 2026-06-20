@@ -133,10 +133,14 @@ import threading, json as _json
 from datetime import datetime, timedelta
 
 # ── WeChat auto-send at 8:00 AM daily ──
-SERVERCHAN_KEY = os.environ.get("SERVERCHAN_KEY", "SCT364214Tj8zj8ZrbAVCj3O8lgywlRKeb")
+# ── WeChat auto-send at 8:00 AM daily ──
+SERVERCHAN_KEY = os.environ.get("SERVERCHAN_KEY", "")
 
 def _wechat_push(title, content):
     """通过 Server酱 推送微信消息"""
+    if not SERVERCHAN_KEY:
+        print("[WeChat] No SERVERCHAN_KEY configured")
+        return False
     import urllib.request
     data = _json.dumps({"title": title, "desp": content}).encode()
     req = urllib.request.Request(f"https://sctapi.ftqq.com/{SERVERCHAN_KEY}.send",
@@ -227,3 +231,14 @@ if __name__ == "__main__":
     uvicorn.run("backend:app", host="0.0.0.0", port=port, reload=False)
 
 
+@app.get("/api/test-wechat")
+async def test_wechat():
+    """发送测试微信消息"""
+    ok = _wechat_push("StockMini 测试", f"如果您收到此消息，说明微信推送配置正常\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    return {"sent": ok, "key_configured": bool(SERVERCHAN_KEY)}
+
+@app.get("/api/trigger-report")
+async def trigger_report():
+    """手动触发每日复盘推送（可用于 cron-job.org 定时调用）"""
+    _daily_report()
+    return {"ok": True, "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
